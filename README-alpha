@@ -1,7 +1,0 @@
-This source distribution of preload corresponds to an alpha release
-that is unstable and not ready for production systems.  Use at your
-own risk.
-
-Generally those versions with an odd minor (second) component in
-their version number are alpha releases, while those with an even
-minor component are stable production releases.
