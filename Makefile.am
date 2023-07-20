@@ -1,136 +1,97 @@
-##                                               -*- Automake -*-
-## Process this file with automake to produce Makefile.in
-##############################################################################
+LDADD =		\
+		-lm	\
+		$(GLIB_LIBS)
 
-SUBDIRS = doc src
+AM_CPPFLAGS =	\
+		$(GLIB_CFLAGS)	\
+		-DSYSCONFDIR='"${sysconfdir}"'	\
+		-DLOGDIR='"${logdir}"'	\
+		-DPKGLOCALSTATEDIR='"${pkglocalstatedir}"'
 
-EXTRA_DIST = bootstrap
-CLEANFILES = 
-MAINTAINERCLEANFILES = \
-		$(srcdir)/INSTALL \
-		$(srcdir)/aclocal.m4 \
-		$(srcdir)/autoscan.log \
-		$(srcdir)/compile \
-		$(srcdir)/config.guess \
-		$(srcdir)/config.h.in \
-		$(srcdir)/config.sub \
-		$(srcdir)/configure.scan \
-		$(srcdir)/depcomp \
-		$(srcdir)/install-sh \
-		$(srcdir)/ltmain.sh \
-		$(srcdir)/missing \
-		$(srcdir)/mkinstalldirs \
-		`find "$(srcdir)" -type f -name Makefile.in -print` \
-		`find "$(srcdir)" -type f -name "*~" -print` \
-		`$(srcdir)/bootstrap --write-configure`
-# The last line above is a horrible hack.
-# GNU Coding Standards recommends that `make maintainer-clean' should not 
-# remove the configure script.
-# We instead make configure call bootstrap.
+preload.o cmdline.o preload.8: Makefile
 
-# Indent all C source and header files, using indent(1):
+sbin_PROGRAMS = preload
 
-indent: $(srcdir)/.indent.pro
-	cd "$(srcdir)" && \
-	find . -mindepth 2 -type f -name "*.[ch]" -print | \
-	  xargs ./missing --run indent
+preload_SOURCES =	\
+		cmdline.c	\
+		cmdline.h	\
+		common.h	\
+		conf.c	\
+		conf.h	\
+		confkeys.h	\
+		log.c	\
+		log.h	\
+		spy.c	\
+		spy.h	\
+		preload.c	\
+		preload.h	\
+		proc.c	\
+		proc.h	\
+		prophet.c	\
+		prophet.h	\
+		readahead.c	\
+		readahead.h	\
+		state.c	\
+		state.h
 
-.PHONY: indent
+EXTRA_DIST =	\
+		preload.8.i	\
+		preload.conf.in	\
+		gen.preload.conf.sh	\
+		runtests.sh
 
-# Creating logrotate and init-script, etc
+TESTS = runtests.sh
 
-EXTRA_DIST += preload.logrotate.in preload.init.in preload.sysconfig
+check: preload.conf
 
-initd_SCRIPTS = preload.init
-AM_INSTALLCHECK_STD_OPTIONS_EXEMPT = $(initd_SCRIPTS)
-sysconfig_DATA = preload.sysconfig
-logrotate_DATA = preload.logrotate
-log_DATA = preload.log
-pkglocalstate_DATA = preload.state
+DISTCLEANFILES = preload.conf preload.state preload.log
+nodist_sysconf_DATA = preload.conf
+preload.conf: gen.preload.conf.sh preload.conf.in confkeys.h
+	. $^ > $@
 
-CLEANFILES += preload.init preload.logrotate preload.state preload.log
 
-do_subst = sed \
-		-e 's,@datadir\@,$(pkgdatadir),g' \
-		-e 's,@sbindir\@,$(sbindir),g' \
-		-e 's,@initddir\@,$(initddir),g' \
-		-e 's,@sysconfigdir\@,$(sysconfigdir),g' \
-		-e 's,@logrotatedir\@,$(logrotatedir),g' \
-		-e 's,@logdir\@,$(logdir),g' \
-		-e 's,@subsysdir\@,$(subsysdir),g' \
-		-e 's,@PACKAGE_NAME\@,$(PACKAGE_NAME),g' \
-		-e 's,@PACKAGE_SUMMARY\@,$(PACKAGE_SUMMARY),g' \
-		-e 's,@PACKAGE\@,$(PACKAGE),g' \
-		-e 's,@VERSION\@,$(VERSION),g'
+MAINTAINERCLEANFILES = preload.8
 
-preload.init: preload.init.in Makefile
-	$(do_subst) $(srcdir)/$< > $@
-	chmod +x $@
+dist_man_MANS = preload.8
 
-preload.logrotate: preload.logrotate.in Makefile
-	$(do_subst) $(srcdir)/$< > $@
-
-preload.state preload.log:
-	touch $@
+$(srcdir)/preload.8: cmdline.c ../configure.ac preload.8.i
+	$(MAKE) $(AM_MAKEFLAGS) preload
+	@echo "Creating $@ using help2man(1)"
+	@$(top_builddir)/missing --run \
+	   help2man --no-info --section=8 --include=preload.8.i \
+	   	    --help-option="-H" --output="$@.tmp" \
+		    --name 'Adaptive readahead daemon' ./preload \
+	 && mv "$@.tmp" "$@" \
+	  || ($(RM) "$@"; \
+	      echo Failed to update preload.8, the man page may be outdated >&2; \
+	      (test -f "$@" || echo help2man is required to generate this file. >> "$@"));
 
 install-data-hook:
-	@cd "$(DESTDIR)$(initddir)" && mv -f preload.init preload
-	@cd "$(DESTDIR)$(logrotatedir)" && mv -f preload.logrotate preload
-	@cd "$(DESTDIR)$(sysconfigdir)" && mv -f preload.sysconfig preload
+	@cd "$(DESTDIR)$(man8dir)" && gzip -c preload.8 > preload.8.gz && $(RM) preload.8
 
 uninstall-hook:
-	$(RM) "$(DESTDIR)$(initddir)/preload"
-	$(RM) "$(DESTDIR)$(logrotatedir)/preload"
-	$(RM) "$(DESTDIR)$(sysconfigdir)/preload"
+	$(RM) "$(DESTDIR)$(man8dir)/preload.8.gz"
 
+######################################################################
 
+MAINTAINERCLEANFILES += preload.conf.debug
 
+preload.conf.debug:
+	$(MAKE) $(AM_MAKEFLAGS) preload.conf
+	cp preload.conf preload.conf.debug
 
-# Some custom targets to make it easier to release things.
-# Use either:
-#		make distcheck
-# or		make release-publish
+RUNPREQ = preload preload.conf.debug
+RUNCMD = ./preload -c preload.conf.debug -s preload.state -d $(ARGS)
 
-tar_file = $(distdir).tar.gz
-sha1_file = $(tar_file).sha1
-gpg_file = $(sha1_file).asc
+run: $(RUNPREQ)
+	$(RUNCMD)
 
-$(sha1_file): $(tar_file)
-	sha1sum $^ > $@
+run-valgrind: $(RUNPREQ)
+	valgrind --tool=memcheck --leak-check=yes $(RUNCMD)
 
-$(gpg_file): $(sha1_file)
-	@echo "Please enter your GPG password to sign the checksum."
-	gpg --armor --sign $^ 
+run-gdb: $(RUNPREQ)
+	gdb --args $(RUNCMD)
 
-release-publish: distcheck $(tar_file) $(sha1_file) $(gpg_file)
-	@echo ""
-	@echo "Please send an announcement to $(MAILING_LIST)"
-	@echo "including the following:"
-	@echo ""
-	@echo "Subject: $(PACKAGE) release $(VERSION) now available"
-	@echo ""
-	@echo "============================== CUT HERE =============================="
-	@echo "A new $(PACKAGE) release $(VERSION) is now available from:"
-	@echo ""
-	@echo "	$(DOWNLOAD_URL_BASE)/$(tar_file)"
-	@echo ""
-	@echo "    which can be verified with:"
-	@echo ""
-	@echo "	$(DOWNLOAD_URL_BASE)/$(sha1_file)"
-	@echo -n "	"
-	@cat $(sha1_file)
-	@echo ""
-	@echo "	$(DOWNLOAD_URL_BASE)/$(gpg_file)"
-	@echo "	(signed by `getent passwd "$$USER" | cut -d: -f 5 | cut -d, -f 1`)"
-	@echo ""
-	@echo "You can access these from:"
-	@echo ""
-	@echo "	$(SITE_URL)"
-	@echo "============================== CUT HERE =============================="
-	@echo ""
-	@echo "Also, please include the new entries from the NEWS file."
-	@echo "Needless to say, upload the four files to the project"
-	@echo "download server and push the NEWS entries to the news"
-	@echo "section of the site."
-
-.PHONY: release-verify-even-micro release-check release-publish
+errors:
+	clear
+	@$(MAKE) $(AM_MAKEFLAGS) clean all > /dev/null
