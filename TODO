@@ -1,0 +1,10 @@
+* Use madvise(2) as a fallback for readahead(2)
+* Investigate whether readahead is an advice or command
+* Investigate whether madvise can be used to evacuate pages not needed anymore
+* Update model when exe or maps are deleted with no replacement
+* Add the proposal and docs
+* Make time tracking more realistic: track real time, and take care of
+  hibernation too.
+* Use Active and Inactive info from /proc/meminfo
+* Figure out difference between buffers and cache. buffers are not to be
+  written back to disk.  can use a good percentage of them.
