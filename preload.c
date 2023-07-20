@@ -146,6 +146,17 @@ main (int argc, char **argv)
   /* main loop */
   main_loop = g_main_loop_new (NULL, FALSE);
   preload_state_run (statefile);
+  / Check if the resource already exists in the preload queue.
+for (int i = 0; i < preload_queue_len; i++) {
+  if (strcmp(preload_queue[i].path, path) == 0) {
+    // The resource already exists, so do nothing.
+    return;
+  }
+}
+
+// The resource does not exist, so add it to the queue.
+preload_queue[preload_queue_len].path = path;
+preload_queue_len++;
   g_main_loop_run (main_loop);
 
   /* clean up */
