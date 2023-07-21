@@ -56,32 +56,27 @@ preload_state_free ();
 g_debug ("exiting");
 return EXIT_SUCCESS;
 }
-static gboolean
 
+static gboolean
 sig_handler_sync (gpointer data)
 {
+  int signal_number = (int) data;
 
-int signal_number = (int) data;
-switch (signal_number) {
-case SIGHUP:
-preload_conf_load (conffile, FALSE);
-preload_log_reopen (logfile);
-break;
-
-case SIGUSR1:
-preload_state_dump_log ();
-break;
-
-case SIGUSR2:
-preload_state_save (statefile);
-
-break;
-
-default: /* everything else is an exit request */
-g_message ("exit requested");
-g_main_loop_quit (main_loop);
-break;
-}
-
-return FALSE;
+  switch (signal_number) {
+    case SIGHUP:
+      preload_conf_load (conffile, FALSE);
+      preload_log_reopen (logfile);
+      break;
+    case SIGUSR1:
+      preload_state_dump_log ();
+      break;
+    case SIGUSR2:
+      preload_state_save (statefile);
+      break;
+    default: /* everything else is an exit request */
+      g_message ("exit requested");
+      g_main_loop_quit (main_loop);
+      break;
+  }
+  return FALSE;
 }
