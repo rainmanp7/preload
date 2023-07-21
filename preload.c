@@ -131,38 +131,27 @@ set_sig_handlers (void)
 int
 main (int argc, char **argv)
 {
-  /* initialize */
-  preload_cmdline_parse (&argc, &argv);
-  preload_log_init (logfile);
-  preload_conf_load (conffile, TRUE);
-  set_sig_handlers ();
-  if (!foreground)
-    daemonize ();
-  if (0 > nice (nicelevel))
-    g_warning ("%s", strerror (errno));
-  g_debug ("starting up");
-  preload_state_load (statefile);
-
-  /* main loop */
-  main_loop = g_main_loop_new (NULL, FALSE);
-  preload_state_run (statefile);
-  / Check if the resource already exists in the preload queue.
-for (int i = 0; i < preload_queue_len; i++) {
-  if (strcmp(preload_queue[i].path, path) == 0) {
-    // The resource already exists, so do nothing.
-    return;
-  }
-}
-
-// The resource does not exist, so add it to the queue.
-preload_queue[preload_queue_len].path = path;
-preload_queue_len++;
-  g_main_loop_run (main_loop);
-
-  /* clean up */
-  preload_state_save (statefile);
-  if (preload_is_debugging ())
-    preload_state_free ();
-  g_debug ("exiting");
-  return EXIT_SUCCESS;
+/* initialize */
+preload_cmdline_parse (&argc, &argv);
+preload_log_init (logfile);
+preload_conf_load (conffile, TRUE);
+set_sig_handlers ();
+if (!foreground)
+daemonize ();
+if (0 > nice (nicelevel))
+g_warning ("%s", strerror (errno));
+g_debug ("starting up");
+preload_state_load (statefile);
+/* initialize preload queue */
+preload_queue_init ();
+/* main loop */
+main_loop = g_main_loop_new (NULL, FALSE);
+preload_state_run (statefile);
+g_main_loop_run (main_loop);
+/* clean up */
+preload_state_save (statefile);
+if (preload_is_debugging ())
+preload_state_free ();
+g_debug ("exiting");
+return EXIT_SUCCESS;
 }
