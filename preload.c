@@ -28,28 +28,20 @@
 #include "cmdline.h"
 #include "conf.h"
 #include "state.h"
-
 #include <signal.h>
 #include <grp.h>
 
 /* variables */
-
 const char *conffile = DEFAULT_CONFFILE;
 const char *statefile = DEFAULT_STATEFILE;
 const char *logfile = DEFAULT_LOGFILE;
 int nicelevel = DEFAULT_NICELEVEL;
 int foreground = 0;
 
-
-
 /* local variables */
-
 static GMainLoop *main_loop;
 
-
-
 /* Functions */
-
 static void
 daemonize (void)
 {
@@ -83,8 +75,6 @@ daemonize (void)
 
 
 /* signal handling */
-
-
 static gboolean
 sig_handler_sync (gpointer data)
 {
@@ -126,7 +116,6 @@ set_sig_handlers (void)
   signal (SIGUSR2, sig_handler);
   signal (SIGPIPE, SIG_IGN);
 }
-
 
 int
 main (int argc, char **argv)
